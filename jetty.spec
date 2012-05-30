@@ -42,7 +42,7 @@
 
 Name:           jetty
 Version:        6.1.26
-Release:        3
+Release:        4
 Summary:        The Jetty Webserver and Servlet Container
 
 Group:          Development/Java
@@ -56,6 +56,7 @@ Source4:        %{name}-depmap.xml
 Patch0:	        disable-modules.patch
 Patch1:	        jetty-util-pom.patch
 Patch4:	        jetty-plugin-fix-site.patch
+Patch5:	        jetty-6.1.26-CVE-2011-4461.diff
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 BuildArch:      noarch
@@ -151,6 +152,7 @@ find . -name "*.class" -exec rm {} \;
 %patch0 -p0 -b .sav
 %patch1 -p0 -b .sav
 %patch4 -p0 -b .sav
+%patch5 -p1 -b .CVE-2011-4461
 
 cp %{SOURCE1} djetty
 
