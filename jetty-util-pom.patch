@@ -1,0 +1,12 @@
+diff -up ./modules/util/pom.xml.fix ./modules/util/pom.xml
+--- ./modules/util/pom.xml.fix	2010-12-01 14:35:37.000000000 -0500
++++ ./modules/util/pom.xml	2010-12-01 14:36:33.000000000 -0500
+@@ -97,7 +97,7 @@
+       <scope>test</scope>
+     </dependency>
+     <dependency>
+-      <groupId>org.mortbay.jetty</groupId>
++      <groupId>javax.servlet</groupId>
+       <artifactId>servlet-api</artifactId>
+       <version>${servlet-version}</version>
+       <scope>provided</scope>

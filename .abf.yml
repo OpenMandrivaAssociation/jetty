@@ -1,0 +1,6 @@
+sources:
+  "djetty.script:"	fbea435da55ee563e4fc60a6576ac2361058475b
+  "jetty-6.1.26-src.zip:"	d972dbf8c9f95bb5db13d4267137f1449787dbdd
+  "jetty-depmap.xml:"	9090fa62110e58053683220b47cb3119afbb6eb4
+  "jetty.init:"	1339bccdececbeba95769143eb0d44f9e7024554
+  "jetty.logrotate:"	33051e1424b5f9972582e30a504efce108150314
