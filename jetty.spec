@@ -147,7 +147,7 @@ Requires:       jetty-websocket-server     = %{version}-%{release}
 Requires:       jetty-websocket-servlet    = %{version}-%{release}
 
 Requires(pre):    shadow-utils
-Requires(post):   systemd-units, systemd-sysv
+Requires(post):   systemd-units
 Requires(preun):  systemd-units
 Requires(postun): systemd-units
 
