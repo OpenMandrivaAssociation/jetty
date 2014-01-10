@@ -1,3 +1,4 @@
+%{?_javapackages_macros:%_javapackages_macros}
 # Copyright (c) 2000-2007, JPackage Project
 # All rights reserved.
 #
@@ -40,201 +41,629 @@
 %global jettylibdir %{_localstatedir}/lib/%{name}
 %global appdir      %{jettylibdir}/webapps
 
-Summary:	The Jetty Webserver and Servlet Container
-Name:		jetty
-Version:	6.1.26
-Release:	4
-Group:		Development/Java
-License:	ASL 2.0
-Url:		http://jetty.mortbay.org/jetty/
-Source0:	http://dist.codehaus.org/%{name}/%{name}-%{version}/%{name}-%{version}-src.zip
-Source1:	djetty.script
-Source2:	jetty.init
-Source3:	jetty.logrotate
-Source4:	%{name}-depmap.xml
-Patch0:		disable-modules.patch
-Patch1:		jetty-util-pom.patch
-Patch4:		jetty-plugin-fix-site.patch
-Patch5:		jetty-6.1.26-CVE-2011-4461.diff
-BuildArch:	noarch
-%{?FE_USERADD_REQ}
-BuildRequires:	jpackage-utils >= 0:1.6
-# build only
-BuildRequires:	maven-antrun-plugin
-BuildRequires:	apache-commons-parent
-BuildRequires:	maven-compiler-plugin
-BuildRequires:	maven-enforcer-plugin
-BuildRequires:	maven-install-plugin
-BuildRequires:	maven-jar-plugin
-BuildRequires:	maven-plugin-plugin
-BuildRequires:	maven-resources-plugin
-BuildRequires:	maven-site-plugin
-BuildRequires:	maven-source-plugin
-BuildRequires:	maven-project-info-reports-plugin
-BuildRequires:	maven-dependency-plugin
-BuildRequires:	maven-assembly-plugin
-BuildRequires:	maven-remote-resources-plugin
-BuildRequires:	maven-war-plugin
-BuildRequires:	maven-plugin-bundle
-BuildRequires:	maven-release-plugin
-BuildRequires:	maven-surefire-plugin
-BuildRequires:	maven-shared-dependency-tree
-BuildRequires:	tomcat6-lib
-BuildRequires:	servlet25
-BuildRequires:	jsp21
-BuildRequires:	slf4j
-BuildRequires:	objectweb-asm
-BuildRequires:	apache-commons-el
-BuildRequires:	apache-commons-daemon
-BuildRequires:	geronimo-jta
-BuildRequires:	geronimo-parent-poms
-BuildRequires:	apache-commons-parent
-BuildRequires:	derby
 
-Requires:	chkconfig
-Requires:	jpackage-utils >= 0:1.6
-Requires:	ant >= 0:1.6
-Requires:	apache-commons-parent
-Requires:	apache-commons-el
-Requires:	apache-commons-logging
-Requires:	tomcat6-lib >= 6.0.26
-Requires:	jsp
-Requires:	mx4j >= 0:3.0
-Requires:	servlet25
-Requires:	jsp21
-Requires:	slf4j
-Requires:	javamail
-Requires:	xerces-j2 >= 0:2.7
-Requires:	xml-commons-apis
-Requires(post,postun):	jpackage-utils >= 0:1.6
-Provides:	group(%username) = %jtuid
-Provides:	user(%username) = %jtuid
+%global addver v20130815
+
+# Conditionals to help breaking eclipse <-> jetty dependency cycle
+# when bootstrapping for new architectures
+%if 0%{?fedora}
+%bcond_without nosql
+%bcond_without osgi
+%bcond_without spring
+# package without service files
+%bcond_without service
+%endif
+
+Name:           jetty
+Version:        9.0.5
+Release:        1.0%{?dist}
+Summary:        Java Webserver and Servlet Container
+
+# Jetty is dual licensed under both ASL 2.0 and EPL 1.0, see NOTICE.txt
+License:        ASL 2.0 or EPL
+URL:            http://www.eclipse.org/jetty/
+Source0:        http://git.eclipse.org/c/jetty/org.eclipse.jetty.project.git/snapshot/jetty-%{version}.%{addver}.tar.gz
+Source1:        djetty.script
+Source3:        jetty.logrotate
+Source5:        %{name}.service
+# MIT license text taken from Utf8Appendable.java
+Source6:        LICENSE-MIT
+Patch0:         %{name}-create-work-dir.patch
+Patch4:         0004-Modify-dependencies.patch
+
+BuildRequires:  geronimo-annotation
+BuildRequires:  geronimo-jaspic-spec
+BuildRequires:  geronimo-jta
+BuildRequires:  geronimo-parent-poms
+BuildRequires:  glassfish-el
+BuildRequires:  glassfish-el-api
+BuildRequires:  glassfish-jsp
+BuildRequires:  glassfish-jsp-api
+BuildRequires:  jakarta-taglibs-standard
+BuildRequires:  java-devel >= 1:1.7.0
+BuildRequires:  jpackage-utils
+BuildRequires:  javapackages-tools >= 0.7.0
+BuildRequires:  jvnet-parent
+BuildRequires:  ant
+BuildRequires:  maven-local
+BuildRequires:  maven-dependency-plugin
+BuildRequires:  maven-enforcer-plugin
+BuildRequires:  maven-shade-plugin
+BuildRequires:  maven-war-plugin
+BuildRequires:  objectweb-asm
+BuildRequires:  slf4j
+BuildRequires:  systemd-units
+BuildRequires:  tomcat-lib
+BuildRequires:  geronimo-parent-poms
+BuildRequires:  maven-plugin-build-helper
+
+%if %{with osgi}
+BuildRequires:  eclipse-platform
+BuildRequires:  eclipse-rcp
+%endif
+%if %{with nosql}
+BuildRequires:  mongo-java-driver >= 2.6.5-4
+%endif
+%if %{with spring}
+BuildRequires:  springframework-beans
+%endif
+
+BuildRequires:  javamail
+BuildRequires:  jetty-parent
+BuildRequires:  jetty-distribution-remote-resources
+BuildRequires:  jetty-build-support
+BuildRequires:  jetty-version-maven-plugin
+BuildRequires:  jetty-toolchain
+BuildRequires:  jetty-assembly-descriptors
+BuildRequires:  jetty-test-policy
+BuildRequires:  jetty-artifact-remote-resources
+
+BuildArch:      noarch
+
+Requires:       java >= 1:1.7.0
+Requires:       jpackage-utils
+Requires:       jetty-client               = %{version}-%{release}
+Requires:       jetty-annotations          = %{version}-%{release}
+Requires:       jetty-client               = %{version}-%{release}
+Requires:       jetty-continuation         = %{version}-%{release}
+Requires:       jetty-deploy               = %{version}-%{release}
+Requires:       jetty-http                 = %{version}-%{release}
+Requires:       jetty-io                   = %{version}-%{release}
+Requires:       jetty-jaas                 = %{version}-%{release}
+Requires:       jetty-jmx                  = %{version}-%{release}
+Requires:       jetty-jndi                 = %{version}-%{release}
+Requires:       jetty-plus                 = %{version}-%{release}
+Requires:       jetty-proxy                = %{version}-%{release}
+Requires:       jetty-rewrite              = %{version}-%{release}
+Requires:       jetty-security             = %{version}-%{release}
+Requires:       jetty-server               = %{version}-%{release}
+Requires:       jetty-servlet              = %{version}-%{release}
+Requires:       jetty-servlets             = %{version}-%{release}
+Requires:       jetty-util                 = %{version}-%{release}
+Requires:       jetty-webapp               = %{version}-%{release}
+Requires:       jetty-websocket-api        = %{version}-%{release}
+Requires:       jetty-websocket-common     = %{version}-%{release}
+Requires:       jetty-websocket-server     = %{version}-%{release}
+Requires:       jetty-websocket-servlet    = %{version}-%{release}
+
+Requires(pre):    shadow-utils
+Requires(post):   systemd-units, systemd-sysv
+Requires(preun):  systemd-units
+Requires(postun): systemd-units
+
+
+Provides:       group(%username) = %jtuid
+Provides:       user(%username)  = %jtuid
+
+Obsoletes: %{name}-manual < %{version}-%{release}
+
+Obsoletes: %{name}-ajp < %{version}-%{release}
+Obsoletes: %{name}-http-spi < %{version}-%{release}
+Obsoletes: %{name}-nested < %{version}-%{release}
+Obsoletes: %{name}-overlay-deployer < %{version}-%{release}
+Obsoletes: %{name}-policy < %{version}-%{release}
 
 %description
-Jetty is a 100% Java HTTP Server and Servlet Container. 
-This means that you do not need to configure and run a 
-separate web server (like Apache) in order to use java, 
-servlets and JSPs to generate dynamic content. Jetty is 
-a fully featured web server for static and dynamic content. 
-Unlike separate server/container solutions, this means 
-that your web server and web application run in the same 
-process, without interconnection overheads and complications. 
-Furthermore, as a pure java component, Jetty can be simply 
-included in your application for demonstration, distribution 
-or deployment. Jetty is available on all Java supported 
-platforms.  
+%global desc \
+Jetty is a 100% Java HTTP Server and Servlet Container. This means that you\
+do not need to configure and run a separate web server (like Apache) in order\
+to use Java, servlets and JSPs to generate dynamic content. Jetty is a fully\
+featured web server for static and dynamic content. Unlike separate\
+server/container solutions, this means that your web server and web\
+application run in the same process, without interconnection overheads\
+and complications. Furthermore, as a pure java component, Jetty can be simply\
+included in your application for demonstration, distribution or deployment.\
+Jetty is available on all Java supported platforms.
+%{desc}
+%global extdesc %{desc}\
+\
+This package contains
+
+%package        project
+Summary:        POM files for Jetty
+Group:          Development/Libraries
+
+%description    project
+%{extdesc} %{summary}.
+
+%package        annotations
+Summary:        annotations module for Jetty
+
+%description    annotations
+%{extdesc} %{summary}.
+
+%package        ant
+Summary:        ant module for Jetty
+
+%description    ant
+%{extdesc} %{summary}.
+
+%package        client
+Summary:        client module for Jetty
+
+%description    client
+%{extdesc} %{summary}.
+
+%package        continuation
+Summary:        continuation module for Jetty
+
+%description    continuation
+%{extdesc} %{summary}.
+
+%package        deploy
+Summary:        deploy module for Jetty
+
+%description    deploy
+%{extdesc} %{summary}.
+
+%package        http
+Summary:        http module for Jetty
+
+%description    http
+%{extdesc} %{summary}.
+
+%package        http-spi
+Summary:        http-spi module for Jetty
+
+%description    http-spi
+%{extdesc} %{summary}.
+
+%package        io
+Summary:        io module for Jetty
+Obsoletes:      %{name}-websocket < %{version}-%{release}
+
+%description    io
+%{extdesc} %{summary}.
+
+%package        jaas
+Summary:        jaas module for Jetty
+
+%description    jaas
+%{extdesc} %{summary}.
+
+%package        jaspi
+Summary:        jaspi module for Jetty
+
+%description    jaspi
+%{extdesc} %{summary}.
+
+%package        jmx
+Summary:        jmx module for Jetty
+
+%description    jmx
+%{extdesc} %{summary}.
+
+%package        jndi
+Summary:        jndi module for Jetty
+
+%description    jndi
+%{extdesc} %{summary}.
+
+%package        jsp
+Summary:        jsp module for Jetty
+
+%description    jsp
+%{extdesc} %{summary}.
+
+%package        jspc-maven-plugin
+Summary:        jspc-maven-plugin module for Jetty
+
+%description    jspc-maven-plugin
+%{extdesc} %{summary}.
+
+%package        maven-plugin
+Summary:        maven-plugin module for Jetty
+
+%description    maven-plugin
+%{extdesc} %{summary}.
+
+%package        monitor
+Summary:        monitor module for Jetty
+
+%description    monitor
+%{extdesc} %{summary}.
+
+%package        plus
+Summary:        plus module for Jetty
+
+%description    plus
+%{extdesc} %{summary}.
+
+%package        proxy
+Summary:        proxy module for Jetty
+
+%description    proxy
+%{extdesc} %{summary}.
+
+%package        rewrite
+Summary:        rewrite module for Jetty
+
+%description    rewrite
+%{extdesc} %{summary}.
+
+%package        runner
+Summary:        runner module for Jetty
+
+%description    runner
+%{extdesc} %{summary}.
+
+%package        security
+Summary:        security module for Jetty
+
+%description    security
+%{extdesc} %{summary}.
+
+%package        server
+Summary:        server module for Jetty
+
+%description    server
+%{extdesc} %{summary}.
+
+%package        servlet
+Summary:        servlet module for Jetty
+
+%description    servlet
+%{extdesc} %{summary}.
+
+%package        servlets
+Summary:        servlets module for Jetty
+
+%description    servlets
+%{extdesc} %{summary}.
+
+%package        overlay-deployer
+Summary:        overlay-deployer module for Jetty
+
+%description    overlay-deployer
+%{extdesc} %{summary}.
+
+%if %{with spring}
+%package        spring
+Summary:        spring module for Jetty
+
+%description    spring
+%{extdesc} %{summary}.
+%endif
+
+%package        start
+Summary:        start module for Jetty
+
+%description    start
+%{extdesc} %{summary}.
+
+%package        util
+Summary:        util module for Jetty
+# Utf8Appendable.java is additionally under MIT license
+License:        (ASL 2.0 or EPL) and MIT
+
+%description    util
+%{extdesc} %{summary}.
+
+%package        util-ajax
+Summary:        util-ajax module for Jetty
+
+%description    util-ajax
+%{extdesc} %{summary}.
+
+%package        webapp
+Summary:        webapp module for Jetty
+
+%description    webapp
+%{extdesc} %{summary}.
+
+%package        xml
+Summary:        xml module for Jetty
+
+%description    xml
+%{extdesc} %{summary}.
+
+%package        websocket-api
+Summary:        websocket-api module for Jetty
+
+%description    websocket-api
+%{extdesc} %{summary}.
+
+%package        websocket-client
+Summary:        websocket-client module for Jetty
+
+%description    websocket-client
+%{extdesc} %{summary}.
+
+%package        websocket-common
+Summary:        websocket-common module for Jetty
+
+%description    websocket-common
+%{extdesc} %{summary}.
+
+%package        websocket-parent
+Summary:        POM file for jetty-websocket
+
+%description    websocket-parent
+%{extdesc} %{summary}.
+
+%package        websocket-server
+Summary:        websocket-server module for Jetty
+
+%description    websocket-server
+%{extdesc} %{summary}.
+
+%package        websocket-servlet
+Summary:        websocket-servlet module for Jetty
+
+%description    websocket-servlet
+%{extdesc} %{summary}.
+
+%if %{with nosql}
+%package        nosql
+Summary:        nosql module for Jetty
+
+%description    nosql
+%{extdesc} %{summary}.
+%endif
+
+%if %{with osgi}
+%package        httpservice
+Summary:        httpservice module for Jetty
+
+%description    httpservice
+%{extdesc} %{summary}.
+
+%package        osgi-boot
+Summary:        osgi-boot module for Jetty
+
+%description    osgi-boot
+%{extdesc} %{summary}.
+
+%package        osgi-boot-warurl
+Summary:        osgi-boot-warurl module for Jetty
+
+%description    osgi-boot-warurl
+%{extdesc} %{summary}.
+
+%package        osgi-project
+Summary:        osgi-project module for Jetty
+
+%description    osgi-project
+%{extdesc} %{summary}.
+
+%package        osgi-boot-jsp
+Summary:        osgi-boot-jsp module for Jetty
+
+%description    osgi-boot-jsp
+%{extdesc} %{summary}.
+
+%package        osgi-npn
+Summary:        osgi-npn module for Jetty
+
+%description    osgi-npn
+%{extdesc} %{summary}.
+
+%endif # with osgi
 
 %package        javadoc
-Summary:	Javadoc for %{name}
-Group:		Development/Java
-Requires:	%{name} = %{version}
+Summary:        Javadoc for %{name}
+Group:          Documentation
+# some MIT-licensed code (from Utf8Appendable) is used to generate javadoc
+License:        (ASL 2.0 or EPL) and MIT
 
 %description    javadoc
 %{summary}.
 
-%package        manual
-Summary:	Documents for %{name}
-Group:		Development/Java
-Requires:	%{name} = %{version}
-
-%description    manual
-%{summary}.
-
 %prep
-%setup -qn %{jettyname}-%{version}
+%setup -q -n %{jettyname}-%{version}.%{addver}
 for f in $(find . -name "*.?ar"); do rm $f; done
 find . -name "*.class" -exec rm {} \;
 
-%patch0 -p0 -b .sav
-%patch1 -p0 -b .sav
-%patch4 -p0 -b .sav
-%patch5 -p1 -b .CVE-2011-4461
+%patch0 -p1 -b .sav
+%patch4 -p1 -b .sav
+
+# Use proper groupId for apache ant
+%pom_xpath_replace "pom:groupId[text()='ant']" "<groupId>org.apache.ant</groupId>" jetty-ant/pom.xml
+
+# Disable test and example artifacts
+# they need more dependencies then we have time for right now :-)
+# and also xmvn currently doesn't support .war
+%pom_disable_module tests
+%pom_disable_module examples
+%pom_disable_module test-jetty-osgi jetty-osgi/pom.xml
+%pom_disable_module test-jetty-osgi-context jetty-osgi/pom.xml
+%pom_disable_module test-jetty-osgi-webapp jetty-osgi/pom.xml
+
+# Since tests are disabled, we don't have some jars
+%pom_remove_dep :test-jetty-webapp jetty-distribution/pom.xml
+%pom_remove_dep :test-proxy-webapp jetty-distribution/pom.xml
+%pom_remove_dep :example-async-rest-webapp jetty-distribution/pom.xml
+%pom_xpath_remove "pom:artifactItem[pom:artifactId[text()='test-jetty-webapp']]" jetty-distribution/pom.xml
+%pom_xpath_remove "pom:artifactItem[pom:artifactId[text()='test-proxy-webapp']]" jetty-distribution/pom.xml
+%pom_xpath_remove "pom:artifactItem[pom:artifactId[text()='example-async-rest-webapp']]" jetty-distribution/pom.xml
+%pom_xpath_remove "pom:artifactItem[pom:artifactId[text()='test-jaas-webapp']]" jetty-distribution/pom.xml
+%pom_xpath_remove "pom:artifactItem[pom:artifactId[text()='test-jndi-webapp']]" jetty-distribution/pom.xml
+%pom_xpath_remove "pom:artifactItem[pom:artifactId[text()='test-spec-webapp']]" jetty-distribution/pom.xml
+
+# Missing jars (jetty-setuid-java-1.0.0.jar,jetty-setuid-java-1.0.0-config.jar)
+%pom_xpath_remove "pom:execution[pom:id[text()='unpack-setuid-config']]" jetty-distribution/pom.xml
+%pom_xpath_remove "pom:execution[pom:id[text()='copy-setuid-deps']]" jetty-distribution/pom.xml
+# test-jaas-webapp artifact is disabled
+%pom_xpath_remove "pom:execution[pom:id[text()='unpack-test-jaas-config']]" jetty-distribution/pom.xml
+%pom_xpath_remove "pom:execution[pom:id[text()='unpack-test-jndi-config']]" jetty-distribution/pom.xml
+%pom_xpath_remove "pom:execution[pom:id[text()='unpack-test-spec-config']]" jetty-distribution/pom.xml
+
+# We don't have this plugin yet
+%pom_remove_plugin :findbugs-maven-plugin jetty-websocket/pom.xml
+
+# enforcer plugin constantly complains
+%pom_remove_plugin :maven-enforcer-plugin
+
+# Change servelt groupId to javax.servlet
+%pom_xpath_inject "pom:project/pom:properties" "
+    <servlet.spec.groupId>javax.servlet</servlet.spec.groupId>
+    <servlet.spec.artifactId>servlet-api</servlet.spec.artifactId>
+    <servlet.spec.version>3.0.20100224</servlet.spec.version>"
+
+# Prevents problem with "Reporting mojo's can only be called from
+# ReportDocumentRender". Investigate proper fix some other time?
+%pom_remove_plugin :maven-pmd-plugin
+
+# License plugin may be useful for upstream, but it has no use in
+# Fedora.
+%pom_remove_plugin :maven-license-plugin
+
+# Remove unpack-config-deps from distribution
+#
+# This is needed because original code used classifiers to select subset
+# of artifacts. Unfortunately there seems to be a weird bug affecting even
+# upstream maven when this goes outside of reactor resolver. Or perhaps
+# this is a weird feature.
+#
+# Our resolver obviously can't handle this so we have to unpack these
+# manually before building distribution
+%pom_xpath_remove "pom:execution[pom:id[text()='unpack-config-deps']]" jetty-distribution
+
+# Disable SPDY for now as there are missing dependencies. SPDY needs
+# Next Protocol Negotiation TLS Extension (NPN) for OpenJDK 7 or
+# greater. We don't have this extension in Fedora.
+# See: http://wiki.eclipse.org/Jetty/Feature/NPN
+%pom_disable_module jetty-spdy
+%pom_remove_dep org.eclipse.jetty.spdy: jetty-distribution
+
+# Disable OSGi
+%if %{without osgi}
+%pom_disable_module jetty-osgi
+%endif
+
+# Disable NoSQL
+%if %{without nosql}
+%pom_disable_module jetty-nosql
+%endif
+
+# Disable Spring
+%if %{without spring}
+%pom_disable_module jetty-spring
+%endif
+
+%pom_remove_dep :org.eclipse.jdt.core jetty-jsp
 
 cp %{SOURCE1} djetty
+cp %{SOURCE6} .
 
-#remove glassfish specific file
-rm -fr modules/jsp-2.1/src/main/java/com/sun/org/apache/commons/logging/impl/JettyLog.java
-
-sed -i "s|<groupId>org.codehaus.mojo</groupId>||g" modules/management/pom.xml
-sed -i "s|dependency-maven-plugin|maven-dependency-plugin|g" modules/management/pom.xml
-sed -i "s|<groupId>org.codehaus.mojo</groupId>||g" modules/jsp-2.0/pom.xml
-sed -i "s|<groupId>ant</groupId>|<groupId>org.apache.ant</groupId>|g" modules/jsp-2.0/pom.xml
-sed -i "s|dependency-maven-plugin|maven-dependency-plugin|g" modules/jsp-2.0/pom.xml
-sed -i "s|<groupId>org.codehaus.mojo</groupId>||g" modules/naming/pom.xml
-sed -i "s|dependency-maven-plugin|maven-dependency-plugin|g" modules/naming/pom.xml
-sed -i "s|<groupId>org.codehaus.mojo</groupId>||g" modules/annotations/pom.xml
-sed -i "s|dependency-maven-plugin|maven-dependency-plugin|g" modules/annotations/pom.xml
-
-sed -i "s|mvn|mvn-jpp|g" distribution/jetty-assembly/pom.xml
-
-sed -i "s|zip \$D/\$N|zip \$D/\$N/\$N|g" bin/build_release_bundles.sh
-
-sed -i "s|# look for JETTY_HOME|export JETTY_HOME=/usr/share/jetty|g" bin/jetty-xinetd.sh
-
-sed -i "s|jcl104-over-slf4j|slf4j-jcl|g" modules/jsp-2.0/pom.xml 
+# Looks like all CDDL licensed content in tarball has been replaced,
+# we don't need to install this license
+rm LICENSE-CONTRIBUTOR/CDDLv1.0.txt
 
 %build
 sed -i -e "s|/usr/share|%{_datadir}|g" djetty
 
-export MAVEN_REPO_LOCAL=$(pwd)/.m2/repository
+%mvn_package :jetty-distribution __noinstall
+# Separate package for main POM file
+%mvn_package :jetty-project project
 
-mvn-jpp \
-	-e \
-	-Dmaven.repo.local=$MAVEN_REPO_LOCAL \
-	-Dmaven2.jpp.depmap.file=%{SOURCE4} \
-	-Dmaven.test.skip=true \
-	-DupdateReleaseInfo=true \
-	install
-    
-#pushd distribution/jetty-assembly
-#  mvn-jpp \
-#       -e \
-#       -s $(pwd)/settings.xml \
-#       -Dmaven.repo.local=$MAVEN_REPO_LOCAL \
-#       -Dmaven2.jpp.depmap.file=%{SOURCE4} \
-#       -Dmaven.test.skip=true \
-#       install
-#popd
+# we don't have all necessary dependencies to run tests
+# missing test dep: org.eclipse.jetty.toolchain:jetty-test-helper
+%mvn_build -f -s
 
-sh bin/build_release_bundles.sh .
+cd jetty-distribution
+rm -rf target/distribution
+mkdir -p target/distribution
+find .. -ipath '*target/*config.jar' | ( while read; do
+  unzip $REPLY -x 'META-INF/*' -d target/distribution
+done)
 
 %install
+%mvn_install
+
 # dirs
-install -dm 755 %{buildroot}%{_bindir}
-install -dm 755 %{buildroot}%{_initrddir}
-install -dm 755 %{buildroot}%{_sysconfdir}/logrotate.d
 install -dm 755 %{buildroot}%{_javadir}/%{name}
-
-install -dm 755 %{buildroot}%{_datadir}/maven2/poms
-install -pm 644 pom.xml %{buildroot}/%{_datadir}/maven2/poms/JPP.jetty-jetty.pom
-install -pm 644 modules/util/pom.xml %{buildroot}/%{_datadir}/maven2/poms/JPP.jetty-jetty-util.pom
-
-%add_to_maven_depmap org.mortbay.jetty jetty %{version} JPP/jetty jetty
-%add_to_maven_depmap org.mortbay.jetty jetty-util %{version} JPP/jetty jetty-util
-
-install -dm 755 %{buildroot}%{_javadocdir}/%{name}-%{version}
+%if %{with service}
+install -dm 755 %{buildroot}%{_bindir}
+install -dm 755 %{buildroot}%{_sysconfdir}/logrotate.d
 install -dm 755 %{buildroot}%{confdir}
-install -dm 755 %{buildroot}%{homedir}
+install -dm 755 %{buildroot}%{homedir}/start.d
 install -dm 755 %{buildroot}%{logdir}
 install -dm 755 %{buildroot}%{rundir}
 install -dm 755 %{buildroot}%{tempdir}
 install -dm 755 %{buildroot}%{appdir}
+install -dm 755 %{buildroot}%{_unitdir}
+
+# systemd unit file
+cp %{SOURCE5} %{buildroot}%{_unitdir}/
+
 # main pkg
-unzip -q %{name}-%{version}.zip -d %{buildroot}%{homedir}
-mv %{buildroot}%{homedir}/%{name}-%{version}/* %{buildroot}%{homedir}/
-rm -fr %{buildroot}%{homedir}/%{name}-%{version}
+tar xvf jetty-distribution/target/%{name}-distribution-%{version}.%{addver}.tar.gz -C %{buildroot}%{homedir}
+mv %{buildroot}%{homedir}/%{name}-distribution-%{version}.%{addver}/* %{buildroot}%{homedir}/
+rm -rf %{buildroot}%{homedir}/%{name}-distribution-%{version}
+rm -f %{buildroot}%{homedir}/bin/*cygwin*
+
+# copy previously extracted configuration
+cp jetty-distribution/target/distribution/etc/* %{buildroot}%{homedir}/etc/
 
 chmod +x %{buildroot}%{homedir}/bin/jetty-xinetd.sh
 chmod +x djetty
 mv djetty %{buildroot}%{_bindir}/djetty
 ln -s %{homedir}/bin/jetty.sh %{buildroot}%{_bindir}/%{name}
-install -pm 755 %{SOURCE2} %{buildroot}%{_initrddir}/%{name}
-install -pm 755 %{SOURCE3} %{buildroot}%{_sysconfdir}/logrotate.d/%{name}
-echo '# Placeholder configuration file.  No default is provided.' > %{buildroot}%{confdir}/jetty.conf
-ln -s %{homedir}/lib/%{name}-%{version}.jar %{buildroot}%{_javadir}/%{name}/%{name}-%{version}.jar
-ln -s %{homedir}/lib/%{name}-%{version}.jar %{buildroot}%{_javadir}/%{name}/%{name}.jar
-ln -s %{homedir}/lib/%{name}-util-%{version}.jar %{buildroot}%{_javadir}/%{name}/%{name}-util-%{version}.jar
-ln -s %{homedir}/lib/%{name}-util-%{version}.jar %{buildroot}%{_javadir}/%{name}/%{name}-util.jar
+install -pm 644 %{SOURCE3} %{buildroot}%{_sysconfdir}/logrotate.d/%{name}
+echo '# Placeholder configuration file.  No default is provided.' > \
+     %{buildroot}%{confdir}/jetty.conf
+
+# make sure jetty knows where to look for jars
+sed -i "1{s:^:lib=%{homedir}/lib\n:}" %{buildroot}%{homedir}/start.ini
+mv %{buildroot}%{homedir}/start.ini %{buildroot}%{confdir}
+ln -s %{confdir}/start.ini %{buildroot}%{homedir}
+
+# purge bundled jars
+rm %{buildroot}%{homedir}/lib/{annotations,jndi,jsp,websocket}/*
+rm %{buildroot}%{homedir}/lib/*.jar
+
+# recreat tarball structure in lib
+ln -sf $(build-classpath tomcat-servlet-3.0-api) \
+       %{buildroot}%{homedir}/lib/servlet-api-3.0.jar
+
+build-jar-repository %{buildroot}%{homedir}/lib/annotations \
+                     objectweb-asm/asm-all geronimo-annotation
+
+build-jar-repository %{buildroot}%{homedir}/lib/jndi javamail/mail
+
+build-jar-repository %{buildroot}%{homedir}/lib/jsp glassfish-el-api \
+           glassfish-el taglibs-core taglibs-standard glassfish-jsp \
+           glassfish-jsp-api ecj
+
+ln -sf $(build-classpath geronimo-jta) \
+       %{buildroot}%{homedir}/lib/jndi/
+
+for module in jetty-annotations jetty-client jetty-continuation jetty-deploy \
+           jetty-http jetty-io jetty-jaas jetty-jmx jetty-jndi jetty-plus \
+           jetty-proxy jetty-rewrite jetty-security jetty-server jetty-servlet \
+           jetty-servlets jetty-util jetty-webapp jetty-xml; do
+        ln -s %{_javadir}/%{name}/$module.jar \
+        %{buildroot}%{homedir}/lib/$module-%{version}.%{addver}.jar
+done
+
+for module in websocket-api websocket-common \
+           websocket-server websocket-servlet; do
+        ln -s %{_javadir}/%{name}/$module.jar \
+        %{buildroot}%{homedir}/lib/websocket/$module-%{version}.%{addver}.jar
+done
+
+
 ( cat << EO_RC
 JAVA_HOME=/usr/lib/jvm/java
 JAVA_OPTIONS=
@@ -246,11 +675,11 @@ JETTY_PID=\$JETTY_RUN/jetty.pid
 EO_RC
 ) > %{buildroot}%{homedir}/.jettyrc
 
-# javadoc
-mv %{buildroot}%{homedir}/jxr/* %{buildroot}%{_javadocdir}/%{name}-%{version}
-
-# manual
-install -dm 755 %{buildroot}%{_docdir}/%{name}-%{version}
+mkdir -p %{buildroot}%{_sysconfdir}/tmpfiles.d
+( cat << EOF
+D /var/run/%{name} 0755 %username %{username} -
+EOF
+) > %{buildroot}%{_sysconfdir}/tmpfiles.d/%{name}.conf
 
 rm -fr %{buildroot}%{homedir}/logs
 ln -s %{logdir} %{buildroot}%{homedir}/logs
@@ -263,106 +692,562 @@ mv %{buildroot}%{homedir}/webapps/* %{buildroot}/%{appdir}
 rm -fr %{buildroot}%{homedir}/webapps
 ln -s %{appdir} %{buildroot}%{homedir}/webapps
 
-rm -fr %{buildroot}%{homedir}/contrib
-rm -fr %{buildroot}%{homedir}/distribution
-rm -fr %{buildroot}%{homedir}/examples
-rm -fr %{buildroot}%{homedir}/extras
-rm -fr %{buildroot}%{homedir}/modules
-rm -fr %{buildroot}%{homedir}/patches
-rm -fr %{buildroot}%{homedir}/jxr
-rm -fr %{buildroot}%{homedir}/project-website
-rm -fr %{buildroot}%{homedir}/LICENSES
-rm -fr %{buildroot}%{homedir}/bin/jetty-service.conf
-rm -fr %{buildroot}%{homedir}/bin/Jetty-Service.exe
-rm -fr %{buildroot}%{homedir}/bin/README.jetty-cygwin.txt.txt
-rm -fr %{buildroot}%{homedir}/bin/build_release_bundles.sh
-rm -fr %{buildroot}%{homedir}/bin/jetty-cygwin.sh
-rm -fr %{buildroot}%{homedir}/*.txt
-rm -fr %{buildroot}%{homedir}/pom.*
-rm -fr %{buildroot}%{homedir}/*.zip
+rm %{buildroot}%{homedir}/*.txt  %{buildroot}%{homedir}/*.html
 
-#use system jars
-pushd %{buildroot}%{homedir}/lib/jsp-2.0
-rm -fr *.jar
-build-jar-repository . ant
-build-jar-repository . commons-el
-build-jar-repository . tomcat6/jasper
-build-jar-repository . slf4j/jcl-over-slf4j
-build-jar-repository . slf4j/api
-build-jar-repository . slf4j/simple
-build-jar-repository . xerces-j2
-build-jar-repository . xml-commons-apis
-build-jar-repository . tomcat6-jsp-2.1-api
-popd
+# Here jetty is going to put its runtime data.
+# See: https://bugzilla.redhat.com/show_bug.cgi?id=845993
+ln -sf %{rundir} %{buildroot}%{homedir}/work
 
-pushd %{buildroot}%{homedir}/lib/management/mx4j
-rm -fr *.jar
-build-jar-repository . mx4j/mx4j
-build-jar-repository . mx4j/mx4j-tools
-popd
+# this should be symlinked the other way around but rpm doesn't let us
+# do that! BAD BAD rpm
+# https://bugzilla.redhat.com/show_bug.cgi?id=447156
+for cdir in contexts contexts-available resources;do
+    ln -sf %{homedir}/$cdir %{buildroot}/%{confdir}/$cdir
+done
 
-pushd %{buildroot}%{homedir}/lib/naming
-build-jar-repository . javamail
-rm -fr mail-*.jar
-popd
-
-pushd %{buildroot}%{homedir}/lib
-build-jar-repository . tomcat6-servlet-2.5-api
-rm -fr servlet-api-*.jar
-popd
 
 %pre
 # Add the "jetty" user and group
-groupadd -r %username &>/dev/null || :
-# Use /bin/sh so init script will start properly.
-useradd  -r -s /bin/sh -d %homedir -M          \
-                    -g %username %username &>/dev/null || :
+getent group  %username &>/dev/null || groupadd -r -g %jtuid %username || :
+getent passwd %username &>/dev/null || useradd  -r -u %jtuid -g %username \
+                             -d %homedir -M -s /sbin/nologin %username || :
 
 %post
-[ -x /sbin/chkconfig ] && /sbin/chkconfig --add %{name}
-%update_maven_depmap
-
-%postun
-userdel  %username &>/dev/null || :
-groupdel %username &>/dev/null || :
-%update_maven_depmap
-
+%systemd_post jetty.service
 
 %preun
-if [ $1 = 0 ]; then
-    [ -f /var/lock/subsys/%{name} ] && %{_initrddir}/%{name} stop
-    [ -f %{_initrddir}/%{name} -a -x /sbin/chkconfig ] && /sbin/chkconfig --del %{name}
+%systemd_preun jetty.service
 
-    %{_sbindir}/userdel %{name} >> /dev/null 2>&1 || :
-fi
+%postun
+%systemd_postun_with_restart jetty.service
 
-%files
+
+%triggerun -- jetty < 8.1.0-3
+# Save the current service runlevel info
+# User must manually run systemd-sysv-convert --apply httpd
+# to migrate them to systemd targets
+/usr/bin/systemd-sysv-convert --save jetty >/dev/null 2>&1 ||:
+
+# Run these because the SysV package being removed won't do them
+/sbin/chkconfig --del jetty >/dev/null 2>&1 || :
+/bin/systemctl try-restart jetty.service >/dev/null 2>&1 || :
+
+%endif # with service
+
+%files -f .mfiles
+%if %{with service}
+%config(noreplace) %{_sysconfdir}/tmpfiles.d/%{name}.conf
+%config(noreplace) %attr(644, root, root) %{_sysconfdir}/logrotate.d/%{name}
 %{_bindir}/*
-%dir %{_javadir}/%{name}
-%{_javadir}/%{name}/%{name}.jar
-%{_javadir}/%{name}/%{name}-%{version}.jar
-%{_javadir}/%{name}/%{name}-util.jar
-%{_javadir}/%{name}/%{name}-util-%{version}.jar
-%{_datadir}/maven2
-%{_mavendepmapfragdir}
 %config(noreplace) %{confdir}
 %dir %{jettylibdir}
 %dir %{jettycachedir}
 %{homedir}
-%{appdir}
 %attr(755, jetty, jetty) %{logdir}
 %attr(755, jetty, jetty) %{tempdir}
-%attr(755, jetty, jetty) %{rundir}
-%dir %{appdir}
-%doc NOTICE.txt
-%doc README.txt
-%doc VERSION.txt
-%{_initrddir}/%{name}
-%{_sysconfdir}/logrotate.d/%{name}
+%ghost %dir %attr(755, jetty, jetty) %{rundir}
+%{appdir}
+%{_unitdir}/%{name}.service
+%endif # with service
+%doc NOTICE.txt README.txt VERSION.txt LICENSE-eplv10-aslv20.html LICENSE-CONTRIBUTOR
+%dir %{_javadir}/%{name}
 
-%files javadoc
-%doc %{_javadocdir}/%{name}-%{version}
+%files project -f .mfiles-project
+%doc NOTICE.txt README.txt VERSION.txt LICENSE-eplv10-aslv20.html LICENSE-CONTRIBUTOR
 
-%files manual
-%doc %{_docdir}/%{name}-%{version}
+%files annotations -f .mfiles-jetty-annotations
+%files ant -f .mfiles-jetty-ant
+%files client -f .mfiles-jetty-client
+%files continuation -f .mfiles-jetty-continuation
+%files deploy -f .mfiles-jetty-deploy
+%files http -f .mfiles-jetty-http
+%files http-spi -f .mfiles-jetty-http-spi
+%files io -f .mfiles-jetty-io
+%files jaas -f .mfiles-jetty-jaas
+%files jaspi -f .mfiles-jetty-jaspi
+%files jmx -f .mfiles-jetty-jmx
+%files jndi -f .mfiles-jetty-jndi
+%files jsp -f .mfiles-jetty-jsp
+%files jspc-maven-plugin -f .mfiles-jetty-jspc-maven-plugin
+%files maven-plugin -f .mfiles-jetty-maven-plugin
+%files monitor -f .mfiles-jetty-monitor
+%files plus -f .mfiles-jetty-plus
+%files proxy -f .mfiles-jetty-proxy
+%files rewrite -f .mfiles-jetty-rewrite
+%files runner -f .mfiles-jetty-runner
+%files security -f .mfiles-jetty-security
+%files server -f .mfiles-jetty-server
+%files servlet -f .mfiles-jetty-servlet
+%files servlets -f .mfiles-jetty-servlets
+%files overlay-deployer -f .mfiles-jetty-overlay-deployer
+%files start -f .mfiles-jetty-start
+%files util -f .mfiles-jetty-util
+%doc LICENSE-MIT
+%files util-ajax -f .mfiles-jetty-util-ajax
+%files webapp -f .mfiles-jetty-webapp
+%files xml -f .mfiles-jetty-xml
+%if 0%{?fedora}
+%files project -f .mfiles-project
+%endif
+%files websocket-api -f .mfiles-websocket-api
+%files websocket-client -f .mfiles-websocket-client
+%files websocket-common -f .mfiles-websocket-common
+%files websocket-parent -f .mfiles-websocket-parent
+%files websocket-server -f .mfiles-websocket-server
+%files websocket-servlet -f .mfiles-websocket-servlet
 
+%if %{with nosql}
+%files nosql -f .mfiles-jetty-nosql
+%endif
+
+%if %{with osgi}
+%files httpservice -f .mfiles-jetty-httpservice
+%files osgi-project -f .mfiles-jetty-osgi-project
+%files osgi-boot -f .mfiles-jetty-osgi-boot
+%files osgi-boot-warurl -f .mfiles-jetty-osgi-boot-warurl
+%files osgi-boot-jsp -f .mfiles-jetty-osgi-boot-jsp
+%files osgi-npn -f .mfiles-jetty-osgi-npn
+%endif
+
+%if %{with spring}
+%files spring -f .mfiles-jetty-spring
+%endif
+
+%files javadoc -f .mfiles-javadoc
+%doc NOTICE.txt LICENSE*
+
+%changelog
+* Thu Aug 22 2013 Michal Srb <msrb@redhat.com> - 9.0.5-1
+- Update to upstream version 9.0.5
+
+* Sat Aug 03 2013 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 9.0.4-2
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_20_Mass_Rebuild
+
+* Mon Jul 01 2013 Michal Srb <msrb@redhat.com> - 9.0.4-1
+- Update to upstream version 9.0.4
+
+* Wed Jun 26 2013 Michal Srb <msrb@redhat.com> - 9.0.3-4
+- Add missing BR: maven-plugin-build-helper
+- Add MIT license text
+- Don't install CDDL license
+- More specific explanation why tests are disabled
+
+* Wed May 29 2013 Michal Srb <msrb@redhat.com> - 9.0.3-3
+- Add description for jetty-util
+
+* Thu May 23 2013 Michal Srb <msrb@redhat.com> - 9.0.3-2
+- Obsolete old jetty-websocket subpackage (Resolves: #966352)
+
+* Thu May 09 2013 Michal Srb <msrb@redhat.com> - 9.0.3-1
+- Update to upstream version 9.0.3
+
+* Mon Apr 22 2013 Michal Srb <msrb@redhat.com> - 9.0.2-1
+- Update to upstream version 9.0.2
+
+* Thu Apr 18 2013 Mikolaj Izdebski <mizdebsk@redhat.com> - 9.0.0-3
+- Remove maven-license-plugin
+- Conditionally disable jetty-spring
+- Fix OSGi conditionals
+
+* Wed Apr 10 2013 Michal Srb <msrb@redhat.com> - 9.0.0-2
+- Replace tomcat libs with glassfish libs
+- Add ability to build package without service files
+- Remove unneeded ecj custom depmap
+
+* Wed Mar 13 2013 Michal Srb <msrb@redhat.com> - 9.0.0-1
+- Update to upstream version 9.0.0
+
+* Thu Mar  7 2013 Mikolaj Izdebski <mizdebsk@redhat.com> - 9.0.0-0.4.RC3
+- Add missing BR: glassfish-el
+
+* Mon Mar  4 2013 Mikolaj Izdebski <mizdebsk@redhat.com> - 9.0.0-0.3.RC3
+- Update to Jetty 9 RC3
+
+* Thu Feb 28 2013 Mikolaj Izdebski <mizdebsk@redhat.com> - 9.0.0-0.2.RC2
+- Upload sources for Jetty 9 RC2
+
+* Thu Feb 28 2013 Michal Srb <msrb@redhat.com> - 9.0.0-0.2.RC2
+- Update to 9.0.0.RC2
+
+* Fri Feb 22 2013 Mikolaj Izdebski <mizdebsk@redhat.com> - 9.0.0-0.1.RC0
+- Remove duplicated %%files for javadoc package
+- Add the new tarball to sources
+
+* Mon Feb 18 2013 Michal Srb <msrb@redhat.com> - 9.0.0-0.1.RC0
+- Update to upstream version 9.0.0
+- Build with xmvn
+
+* Fri Feb 15 2013 Alexander Kurtakov <akurtako@redhat.com> 8.1.9-3
+- Add missing BR on maven-license-plugin.
+
+* Thu Feb 14 2013 Mikolaj Izdebski <mizdebsk@redhat.com> - 8.1.9-2
+- Update upstream URL
+- Resolves: rhbz#911292
+
+* Thu Feb 14 2013 Alexander Kurtakov <akurtako@redhat.com> 8.1.9-1
+- Update to 8.1.9.
+
+* Thu Feb 14 2013 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 8.1.5-12
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_19_Mass_Rebuild
+
+* Wed Feb 06 2013 Java SIG <java-devel@lists.fedoraproject.org> - 8.1.5-11
+- Update for https://fedoraproject.org/wiki/Fedora_19_Maven_Rebuild
+- Replace maven BuildRequires with maven-local
+
+* Fri Dec 14 2012 Stanislav Ochotnicky <sochotnicky@redhat.com> - 8.1.5-10
+- Reenable osgi support
+
+* Mon Nov  5 2012 Stanislav Ochotnicky <sochotnicky@redhat.com> - 8.1.5-9
+- Use file lists generated by improved add_maven_depmap macro
+
+* Wed Oct 10 2012 Mikolaj Izdebski <mizdebsk@redhat.com> - 8.1.5-8
+- Fix build conditionals
+
+* Tue Oct  9 2012 Mikolaj Izdebski <mizdebsk@redhat.com> - 8.1.5-7
+- Introduce nosql and osgi conditionals
+- Temporarly disable osgi to bootstrap eclipse
+
+* Fri Oct  5 2012 Mikolaj Izdebski <mizdebsk@redhat.com> - 8.1.5-6
+- Don't delete jetty user on package erase, resolves: rhbz#857708
+
+* Mon Aug 27 2012 Mikolaj Izdebski <mizdebsk@redhat.com> - 8.1.5-5
+- Create work directory if not exists
+
+* Tue Aug 21 2012 Mikolaj Izdebski <mizdebsk@redhat.com> - 8.1.5-4
+- Convert systemd scriplets to macros, resolves #850176
+
+* Tue Aug 21 2012 Mikolaj Izdebski <mizdebsk@redhat.com> - 8.1.5-3
+- Don't redirect useradd and groupadd output to the bit bucket
+
+* Tue Aug  7 2012 Mikolaj Izdebski <mizdebsk@redhat.com> - 8.1.5-2
+- Put runtime data in /run instead of /tmp
+- Fix patch for disabling OSGi
+
+* Wed Jul 18 2012 Mikolaj Izdebski <mizdebsk@redhat.com> - 8.1.5-1
+- Update to upstream version 8.1.5
+- Fix rpmlint warnings
+
+* Wed Jul 18 2012 Mikolaj Izdebski <mizdebsk@redhat.com> - 8.1.4-3
+- Disable SPDY to fix FTBFS
+
+* Wed Jun 13 2012 Stanislav Ochotnicky <sochotnicky@redhat.com> - 8.1.4-2
+- Fix jetty being accidentaly enabled after update by default
+- Resolves: #831280
+
+* Tue May 29 2012 Mikolaj Izdebski <mizdebsk@redhat.com> - 8.1.4-1
+- Update to 8.1.4
+
+* Thu May 24 2012 Mikolaj Izdebski <mizdebsk@redhat.com> - 8.1.2-9
+- Add patch to disable jetty-nosql
+
+* Wed May 23 2012 Mikolaj Izdebski <mizdebsk@redhat.com> - 8.1.2-8
+- Build jetty-nosql conditionally
+
+* Tue May 15 2012 Mikolaj Izdebski <mizdebsk@redhat.com> - 8.1.2-7
+- Add unconditional BR on glassfish-jsp to make build-jar-repository work
+
+* Wed May  9 2012 Mikolaj Izdebski <mizdebsk@redhat.com> - 8.1.2-6
+- Move start.ini to /etc
+- Require glassfish-jsp only for jetty-webapp and jetty-osgi
+- Use shadow-utils directly instead of fedora-usermgmt-devel
+- Fix license tags
+
+* Mon Apr 30 2012 Stanislav Ochotnicky <sochotnicky@redhat.com> - 8.1.2-5
+- Don't require subpackages not needed by server itself
+- Make jetty look for jars in correct directory
+- Add proper dependent jars
+
+* Fri Apr 27 2012 Mikolaj Izdebski <mizdebsk@redhat.com> - 8.1.2-4
+- Keep license files only in jetty-project and jetty-javadoc packages
+
+* Fri Apr 27 2012 Alexander Kurtakov <akurtako@redhat.com> 8.1.2-3
+- There is no epoch define in jetty.
+
+* Thu Apr 26 2012 Alexander Kurtakov <akurtako@redhat.com> 8.1.2-2
+- Drop envr from jpackage-utils as it was wrong.
+
+* Thu Apr 26 2012 Stanislav Ochotnicky <sochotnicky@redhat.com> - 8.1.2-1
+- Update to 8.1.2 upstream release
+
+* Wed Apr 25 2012 Mikolaj Izdebski <mizdebsk@redhat.com> - 8.1.0-7
+- Split into number of subpackages
+
+* Mon Apr 23 2012 Mikolaj Izdebski <mizdebsk@redhat.com> - 8.1.0-6
+- Drop init script, resolves #814788
+- Remove jetty.script from SCM
+- Reload systemd on package install/upgrade/remove
+
+* Wed Apr 18 2012 Mikolaj Izdebski <mizdebsk@redhat.com> - 8.1.0-5
+- Replace eclipse-rcp BR with felix-framework
+- Add missing R: felix-framework
+
+* Fri Feb 24 2012 Stanislav Ochotnicky <sochotnicky@redhat.com> - 8.1.0-4
+- Add geronimo-annotation to Requires
+
+* Thu Feb 23 2012 Stanislav Ochotnicky <sochotnicky@redhat.com> - 8.1.0-3
+- Fix web server running example webapp
+- Add systemd unit file and conversion scriptlets
+
+* Wed Feb 22 2012 Stanislav Ochotnicky <sochotnicky@redhat.com> - 8.1.0-2
+- Fix #794913 - missing user management utils during install
+
+* Wed Feb  1 2012 Stanislav Ochotnicky <sochotnicky@redhat.com> - 8.1.0-1
+- Update to final release
+
+* Mon Jan 30 2012 Stanislav Ochotnicky <sochotnicky@redhat.com> - 8.1.0-0.4.rc5
+- Fix upgrade path problems
+- Symlink conf files into etc (so users still see them there)
+
+* Thu Jan 26 2012 Alexander Kurtakov <akurtako@redhat.com> 8.1.0-0.3.rc5
+- Revert the dependency on jetty-parent - we don't need the whole maven stack when installing jetty.
+- Make the javadoc package not depend on the main one.
+
+* Thu Jan 26 2012 Stanislav Ochotnicky <sochotnicky@redhat.com> - 8.1.0-0.2.rc5
+- Add jetty-parent to Requires
+
+* Wed Jan 25 2012 Stanislav Ochotnicky <sochotnicky@redhat.com> - 8.1.0-0.1.rc5
+- Update to rc5
+- Remove symbolic name patch (not needed after bundle plugin fix)
+
+* Wed Jan 25 2012 Stanislav Ochotnicky <sochotnicky@redhat.com> - 8.1.0-0.1.RC4
+- Major update to 8.1.0 RC4
+- Removed manual subpackage (was empty anyway)
+
+* Fri Jan 13 2012 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 6.1.26-9
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_17_Mass_Rebuild
+
+* Fri Aug 12 2011 Alexander Kurtakov <akurtako@redhat.com> 6.1.26-8
+- Install jetty-client and its deps into _javadir and provide maven integration.
+
+* Tue Jun 28 2011 Alexander Kurtakov <akurtako@redhat.com> 6.1.26-7
+- Adapt build for maven 3.x.
+
+* Wed Feb 09 2011 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 6.1.26-6
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_15_Mass_Rebuild
+
+* Mon Dec 20 2010 Alexander Kurtakov <akurtako@redhat.com> 6.1.26-5
+- Do not require tomcat6-lib.
+- Drop one depmap.
+
+* Tue Dec 14 2010 Alexander Kurtakov <akurtako@redhat.com> 6.1.26-4
+- Do not require apache-commons-parent in order to not bring maven and friends.
+
+* Wed Dec 01 2010 Jeff Johnston <jjohnstn@redhat.com> 6.1.26-3
+- Resolves #655808
+- Fix util pom to reference javax.servlet groupid for servlet-api.
+- Don't add tomcat6-servlet-api to depmap.
+- Remove tomcat5 BR.
+
+* Mon Nov 22 2010 Jeff Johnston <jjohnstn@redhat.com> 6.1.26-2
+- Resolves #652020
+- Remove tomcat5 references and replace with appropriate alternatives.
+
+* Fri Nov 12 2010 Alexander Kurtakov <akurtako@redhat.com> 6.1.26-1
+- Update to 6.1.26.
+
+* Tue Jun 15 2010 Alexander Kurtakov <akurtako@redhat.com> 6.1.24-1
+- Update to 6.1.24.
+
+* Wed Dec 02 2009 Jeff Johnston <jjohnstn@redhat.com> 6.1.21-4
+- Resolves #543081
+- Add maven depmap fragments.
+
+* Tue Nov 03 2009 Jeff Johnston <jjohnstn@redhat.com> 6.1.21-3
+- Security issues
+- Resolves #532675, #5326565
+
+* Tue Sep 29 2009 Alexander Kurtakov <akurtako@redhat.com> 6.1.21-2
+- Install unversioned jars.
+
+* Tue Sep 29 2009 Alexander Kurtakov <akurtako@redhat.com> 6.1.21-1
+- Update to upstream 6.1.21 release.
+
+* Fri Sep 18 2009 Jeff Johnston <jjohnstn@redhat.com> 6.1.20-3
+- Add djetty script source and fix init script to work properly.
+
+* Tue Sep 15 2009 Alexander Kurtakov <akurtako@redhat.com> 6.1.20-2
+- Fix requires.
+
+* Tue Sep 15 2009 Alexander Kurtakov <akurtako@redhat.com> 6.1.20-1
+- Update to upstream 6.1.20.
+
+* Fri Jul 24 2009 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 5.1.15-4
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_12_Mass_Rebuild
+
+* Thu May 21 2009 Jeff Johnston <jjohnstn@redhat.com> 5.1.15-3
+- Do not allow directory listings.
+
+* Tue May 19 2009 Jeff Johnston <jjohnstn@redhat.com> 5.1.15-2
+- Update OSGI manifest file.
+
+* Tue May 19 2009 Jeff Johnston <jjohnstn@redhat.com> 5.1.15-1
+- Upgrade to 5.1.15 source tarball for Fedora.
+
+* Fri Apr 22 2009 Jeff Johnston <jjohnstn@redhat.com> 5.1.14-3
+- Add %%{libdir} to files list.
+- Resolves #473585
+
+* Wed Feb 11 2009 Jeff Johnston <jjohnstn@redhat.com> 5.1.14-1.10
+- Rename jettyc back to .jettyrc.
+- Resolves #485012
+
+* Tue Feb 03 2009 Jeff Johnston <jjohnstn@redhat.com> 5.1.14-1.9
+- Change %%{_sysconfdir}/init.d references to be %%{_initrddir}
+
+* Mon Feb 02 2009 Jeff Johnston <jjohnstn@redhat.com> 5.1.14-1.8
+- Fixes for unowned directories.
+
+* Tue Jan 06 2009 Jeff Johnston <jjohnstn@redhat.com> 5.1.14-1.7
+- Patch init.d script to add status operation
+- Patch unix djetty script so it doesn't issue error messages about /dev/tty
+  and fix various inconsistencies with the init.d script
+
+* Tue Aug 12 2008 Andrew Overholt <overholt@redhat.com> 5.1.14-1.6
+- Require tomcat5 bits with proper OSGi metadata
+
+* Fri Jul 11 2008 Andrew Overholt <overholt@redhat.com> 5.1.14-1.5
+- Bump release.
+
+* Fri Jul 11 2008 Andrew Overholt <overholt@redhat.com> 5.1.14-1.3
+- Update OSGi manifest
+
+* Wed Jul  9 2008 Tom "spot" Callaway <tcallawa@redhat.com> - 5.1.14-1.3
+- drop repotag
+
+* Fri Jul 04 2008 Jeff Johnston <jjohnstn@redhat.com> 5.1.14-1jpp.2
+- Security patch
+- Resolves #417401, #417411, #417391
+
+* Wed Jun 25 2008 Jeff Johnston <jjohnstn@redhat.com> 5.1.14-1jpp.1
+- Upgrade to 5.1.14 source tarball for Fedora
+
+* Fri Aug 31 2007 Jeff Johnston <jjohnstn@redhat.com> 5.1.12-1jpp.7
+- Resolves #262221
+- Use /bin/sh instead of /sbin/nologin so init will work
+
+* Thu Aug 30 2007 Jeff Johnston <jjohnstn@redhat.com> 5.1.12-1jpp.6
+- Rename all source files from jetty5 to jetty
+- Replace jetty5 references with jetty in source files
+
+* Tue Aug 28 2007 Jeff Johnston <jjohnstn@redhat.com> 5.1.12-1jpp.5
+- Rename from jetty5 to jetty
+
+* Mon Aug 27 2007 Jeff Johnston <jjohnstn@redhat.com> 5.1.12-1jpp.4
+- Remove post manual step
+- Remove jsse requirement
+- Add comment inside jetty.conf so it isn't empty
+
+- Use /sbin/nologin when creating the jetty5 user and group
+* Mon Aug 27 2007 Jeff Johnston <jjohnstn@redhat.com> 5.1.12-1jpp.3
+- Use /sbin/nologin when creating the jetty5 user and group
+- Remove all jars in %%prep
+- Remove unnecessary preun step for removing extra jars
+- Fix license
+- Fix group for manual subpackage
+- Fix group for javadoc subpackage
+- Add comment regarding empty jetty.conf file
+- Add jsp requirement
+- Remove %%post javadoc ln command
+- Remove %%post manual ln command
+- Change source0 tarball to remove BCLA-licensed jars
+- Remove epoch 0 references in subpackage requires for extras and manual
+- Rename .jettyrc to jettyrc
+- Remove hidden files
+- Don't install gcj files twice
+
+* Fri Aug 24 2007 Jeff Johnston <jjohnstn@redhat.com> 5.1.12-1jpp.2
+- Remove demo subpackage.
+
+* Wed Aug 08 2007 Jeff Johnston <jjohnstn@redhat.com> 5.1.12-1jpp.1
+- Comment out demo subpackage.
+
+* Mon Aug 06 2007 Ben Konrath <bkonrath@redhat.com> 5.1.12-1jpp.1
+- Add --excludes to aot-compile-rpm line.
+- Inject OSGi manifest into jetty jar.
+
+* Thu Jul 19 2007 Andrew Overholt <overholt@redhat.com> 5.1.12-1jpp.1
+- Update to 5.1.12 for Fedora.
+- Use fedora-usermgmt stuff.
+
+* Fri Feb 02 2007 Ralph Apel <r.apel at r-apel.de> - 0:5.1.12-1jpp
+- Upgrade to 5.1.12
+- Add gcj_support option
+- Avoid circular dependency with mx4j-tools thru bootstrap option
+
+* Sat Aug 12 2006 Anthony Green <green@redhat.com> - 0:5.1.11-0.rc0.4jpp
+- Escape macros in changelog with %.
+- Untabify.
+- Don't delete symlinks in %%preun.
+- Add logrotate file.
+- Don't install unversioned javadoc files.
+- Don't rm old links in manual package.
+- Convert some end-of-line encodings.
+
+* Fri Aug 11 2006 Anthony Green <green@redhat.com> - 0:5.1.11-0.rc0.3jpp
+- First Fedora build.
+- Disable extras.
+- Use fedora-useradd & fedora-userdel.
+- Add gcj support.
+- Tweak License and Group tags for rpmlint.
+- Use full URL for Source0.
+
+* Thu Aug 10 2006 Ralph Apel <r.apel@r-apel.de> - 0:5.1.11-0.rc0.2jpp
+- Fix version/release in changelog
+- Introduce option '--without extra' to omit this subpackage and its (B)Rs
+- Don't delete user on erase
+- Tidy up BRs
+- Add commons-el.jar to ext
+- No ghost for lib/org.mortbay.jetty.jar, lib/org.mortbay.jmx.jar
+- Avoid use of build-jar-repository in spec
+- Avoid use of rebuild-jar-repository in init and start script
+- Don't handle JETTY_PID file in init script: start script takes care
+- Patch PostFileFilter to remove a (unused) com.sun package import
+- Explicitly (B)R  geronimo-jta-1.0.1B-api instead of any jta
+- Add empty file /etc/jetty5/jetty.conf:
+  activate contexts manually if desired
+
+* Tue Jun 20 2006 Ralph Apel <r.apel@r-apel.de> - 0:5.1.2-3jpp
+- First JPP-1.7 release
+
+* Mon Mar 14 2005 Ralph Apel <r.apel@r-apel.de> - 0:5.1.2-2jpp
+- link commons-logging to %%{_homedir}/ext
+- link jspapi to %%{_homedir}/ext
+- only use %%{_homedir}/etc not conf
+
+* Tue Feb 01 2005 Ralph Apel <r.apel@r-apel.de> - 0:5.1.2-1jpp
+- Upgrade to 5.1.2
+- Prepare for build with Java 1.5, (thx to Petr Adamek)
+- Require /sbin/chkconfig instead of chkconfig package
+
+* Tue Jan 04 2005 Ralph Apel <r.apel@r-apel.de> - 0:5.0.0-2jpp
+- Include build of extra, so called JettyPlus
+- Create own subdirectory for jetty5 in %%{_javadir}
+- Change %%{_homedir}/conf to %%{_homedir}/etc
+- Dropped chkconfig requirement; just exec if /sbin/chkconfig available
+- Fixed unpackaged .jettyrc
+
+* Mon Oct 04 2004 Ralph Apel <r.apel@r-apel.de> - 0:5.0.0-1jpp
+- Upgrade to 5.0.0
+- Fixed URL
+- relaxed some versioned dependencies
+
+* Sun Aug 23 2004 Randy Watler <rwatler at finali.com> - 0:4.2.20-2jpp
+- Rebuild with ant-1.6.2
+
+* Fri Jun 18 2004 Ralph Apel <r.apel@r-apel.de> - 0:4.2.20-1jpp
+- Upgrade to 4.2.20
+- Drop ownership of /usr/share/java and /usr/bin
+
+* Tue Feb 24 2004 Ralph Apel <r.apel@r-apel.de> - 0:4.2.17-2jpp
+- enhancements and corrections thanks to Kaj J. Niemi:
+- $JETTY_HOME/ext didn't exist but %%post depended on it
+- correctly shutdown jetty upon uninstall
+- RedHat depends on chkconfig/service to work so a functional
+  init.d/jetty4 needed to be created
+- djetty4 (jetty.sh) did funny things especially when it attempted to guess
+  stuff
+- a lot of .xml config files assumed that the configs were in etc/ instead of
+  conf/
+
+* Thu Feb 19 2004 Ralph Apel <r.apel@r-apel.de> - 0:4.2.17-1jpp
+- First JPackage release.
