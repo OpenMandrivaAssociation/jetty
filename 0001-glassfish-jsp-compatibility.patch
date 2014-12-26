@@ -1,0 +1,44 @@
+From 74ea686414c6b5a788a82bf520e5b5ce84270603 Mon Sep 17 00:00:00 2001
+From: Michael Simacek <msimacek@redhat.com>
+Date: Tue, 12 Aug 2014 13:51:49 +0200
+Subject: [PATCH] glassfish-jsp compatibility
+
+---
+ .../main/java/org/eclipse/jetty/jspc/plugin/JspcMojo.java   | 13 +++++++++++--
+ 1 file changed, 11 insertions(+), 2 deletions(-)
+
+diff --git a/jetty-jspc-maven-plugin/src/main/java/org/eclipse/jetty/jspc/plugin/JspcMojo.java b/jetty-jspc-maven-plugin/src/main/java/org/eclipse/jetty/jspc/plugin/JspcMojo.java
+index 3e524b0..3132743 100644
+--- a/jetty-jspc-maven-plugin/src/main/java/org/eclipse/jetty/jspc/plugin/JspcMojo.java
++++ b/jetty-jspc-maven-plugin/src/main/java/org/eclipse/jetty/jspc/plugin/JspcMojo.java
+@@ -33,6 +33,7 @@ import java.util.Iterator;
+ import java.util.List;
+ import java.util.Set;
+ import java.util.regex.Pattern;
++import java.lang.reflect.Field;
+ 
+ import org.apache.jasper.JspC;
+ import org.apache.maven.artifact.Artifact;
+@@ -90,9 +91,17 @@ public class JspcMojo extends AbstractMojo
+      */
+     public static class JettyJspC extends JspC
+     {
+-        public void setClassLoader (ClassLoader loader)
++        public void setClassLoader (URLClassLoader loader)
+         {
+-            this.loader = loader;
++            try {
++                Field loaderField = JspC.class.getDeclaredField("loader");
++                loaderField.setAccessible(true);
++                loaderField.set(this, loader);
++            } catch (NoSuchFieldException e) {
++                throw new RuntimeException(e);
++            } catch (IllegalAccessException e) {
++                throw new RuntimeException(e);
++            }
+         }
+     }
+     
+-- 
+1.9.3
+
