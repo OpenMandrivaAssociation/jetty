@@ -42,24 +42,21 @@
 %global appdir      %{jettylibdir}/webapps
 
 
-%global addver v20140505
+%global addver v20140905
 
 # Conditionals to help breaking eclipse <-> jetty dependency cycle
 # when bootstrapping for new architectures
-%if 0%{?fedora}
 %bcond_without nosql
 %bcond_without osgi
 %bcond_without spring
 # package without service files
 %bcond_without service
-%endif
 
 Name:           jetty
-Version:        9.1.5
-Release:        1%{?dist}
-Group:		System/Servers
+Version:        9.2.3
+Release:        2.1
 Summary:        Java Webserver and Servlet Container
-
+Group:		System/Servers
 # Jetty is dual licensed under both ASL 2.0 and EPL 1.0, see NOTICE.txt
 License:        ASL 2.0 or EPL
 URL:            http://www.eclipse.org/jetty/
@@ -69,7 +66,8 @@ Source3:        jetty.logrotate
 Source5:        %{name}.service
 # MIT license text taken from Utf8Appendable.java
 Source6:        LICENSE-MIT
-Patch0:         %{name}-create-work-dir.patch
+
+Patch1:         0001-glassfish-jsp-compatibility.patch
 
 BuildRequires:  geronimo-annotation
 BuildRequires:  geronimo-jaspic-spec
@@ -144,6 +142,7 @@ Requires:       jetty-security             = %{version}-%{release}
 Requires:       jetty-server               = %{version}-%{release}
 Requires:       jetty-servlet              = %{version}-%{release}
 Requires:       jetty-servlets             = %{version}-%{release}
+Requires:       jetty-start                = %{version}-%{release}
 Requires:       jetty-util                 = %{version}-%{release}
 Requires:       jetty-webapp               = %{version}-%{release}
 Requires:       jetty-websocket-api        = %{version}-%{release}
@@ -158,7 +157,7 @@ Requires:       jetty-websocket-servlet    = %{version}-%{release}
 Requires:       glassfish-servlet-api
 
 Requires(pre):    shadow-utils
-Requires(post):   systemd-units
+Requires(post):   systemd-units, systemd-sysv
 Requires(preun):  systemd-units
 Requires(postun): systemd-units
 
@@ -175,6 +174,7 @@ Obsoletes: %{name}-overlay-deployer < %{version}-%{release}
 Obsoletes: %{name}-policy < %{version}-%{release}
 Obsoletes: %{name}-websocket-mux-extension < %{version}-%{release}
 Obsoletes: %{name}-runner < %{version}-%{release}
+Obsoletes: %{name}-osgi-npn < %{version}-%{release}
 
 %description
 %global desc \
@@ -194,7 +194,7 @@ This package contains
 
 %package        project
 Summary:        POM files for Jetty
-Group:          System/Libraries
+Group:          Development/Java
 
 %description    project
 %{extdesc} %{summary}.
@@ -477,13 +477,14 @@ Summary:        osgi-boot-jsp module for Jetty
 %description    osgi-boot-jsp
 %{extdesc} %{summary}.
 
-%package        osgi-npn
-Summary:        osgi-npn module for Jetty
+%endif # with osgi
 
-%description    osgi-npn
+%package quickstart
+Summary:        quickstart module for Jetty
+
+%description quickstart
 %{extdesc} %{summary}.
 
-%endif # with osgi
 
 %package        javadoc
 Summary:        Javadoc for %{name}
@@ -499,19 +500,12 @@ License:        (ASL 2.0 or EPL) and MIT
 find . -name "*.?ar" -exec rm {} \;
 find . -name "*.class" -exec rm {} \;
 
-%patch0 -p1 -b .sav
+%patch1 -p1
 
 # Use proper groupId for apache ant
 %pom_xpath_replace "pom:groupId[text()='ant']" "<groupId>org.apache.ant</groupId>" jetty-ant/pom.xml
 
-%pom_remove_dep "javax.transaction:javax.transaction-api" jetty-plus
-%pom_remove_dep "javax.transaction:javax.transaction-api" jetty-maven-plugin
-%pom_remove_dep "javax.transaction:javax.transaction-api"
-%pom_remove_dep "javax.transaction:javax.transaction-api" jetty-distribution
-%pom_add_dep "org.jboss.spec.javax.transaction:jboss-transaction-api_1.2_spec" jetty-plus
-%pom_add_dep "org.jboss.spec.javax.transaction:jboss-transaction-api_1.2_spec" jetty-maven-plugin
-%pom_add_dep "org.jboss.spec.javax.transaction:jboss-transaction-api_1.2_spec"
-%pom_add_dep "org.jboss.spec.javax.transaction:jboss-transaction-api_1.2_spec" jetty-distribution
+%pom_change_dep -r "javax.transaction:javax.transaction-api" "org.jboss.spec.javax.transaction:jboss-transaction-api_1.2_spec"
 %pom_remove_dep "org.glassfish:javax.el" jetty-jsp
 %pom_remove_dep "org.glassfish:javax.el" jetty-distribution
 %pom_add_dep "org.glassfish.web:javax.el" jetty-jsp
@@ -519,9 +513,8 @@ find . -name "*.class" -exec rm {} \;
 %pom_remove_dep "org.eclipse.jetty.toolchain:jetty-jsp-jdt" jetty-distribution
 %pom_remove_dep "com.sun.net.httpserver:http" jetty-http-spi
 
-# licensing issues
-%pom_remove_dep "org.glassfish.web:javax.servlet.jsp.jstl" jetty-jsp
-%pom_remove_dep "org.glassfish.web:javax.servlet.jsp.jstl" jetty-distribution
+# glassfish-jstl has licensing issues
+%pom_change_dep -r "org.glassfish.web:javax.servlet.jsp.jstl" "javax.servlet:jstl"
 
 %pom_remove_plugin ":clirr-maven-plugin" jetty-websocket
 %pom_remove_plugin ":maven-eclipse-plugin" jetty-osgi
@@ -533,11 +526,17 @@ find . -name "*.class" -exec rm {} \;
 # installed yet
 %pom_remove_plugin ":exec-maven-plugin" jetty-distribution
 
+# txt artifact - not installable
+%pom_remove_plugin ":jetty-version-maven-plugin"
+%pom_xpath_remove "pom:artifactItem[pom:classifier='version']" jetty-distribution
+
+
 # Disable test and example artifacts
 # they need more dependencies then we have time for right now :-)
 # and also xmvn currently doesn't support .war
 %pom_disable_module tests
 %pom_disable_module examples
+%pom_disable_module aggregates/jetty-all
 %pom_disable_module test-jetty-osgi jetty-osgi/pom.xml
 %pom_disable_module test-jetty-osgi-context jetty-osgi/pom.xml
 %pom_disable_module test-jetty-osgi-webapp jetty-osgi/pom.xml
@@ -592,6 +591,28 @@ find . -name "*.class" -exec rm {} \;
 # See: http://wiki.eclipse.org/Jetty/Feature/NPN
 %pom_disable_module jetty-spdy
 %pom_remove_dep org.eclipse.jetty.spdy: jetty-distribution
+%pom_disable_module jetty-alpn
+%pom_disable_module jetty-osgi-alpn jetty-osgi
+%pom_remove_dep :jetty-alpn-server jetty-distribution
+
+# requiring artifacts which are a copy of Tomcat 8 jasper with dependencies
+# removed. We don't have Tomcat 8 in Fedora yet, so I try to bend it to use
+# glassfish
+%pom_disable_module apache-jsp
+%pom_change_dep -r org.eclipse.jetty:apache-jsp org.glassfish.web:javax.servlet.jsp
+
+# qutoing readme.txt: "This empty jar file is purely to work around a problem
+# with the Maven Dependency plugin". We don't copy deps, so we don't need this
+# workaround
+%pom_disable_module apache-jstl
+%pom_change_dep -r org.eclipse.jetty:apache-jstl javax.servlet:jstl
+
+# org.mortbay.jasper:apache-el is just a copy of tomcat el with dependencies
+# removed
+%pom_change_dep -r org.mortbay.jasper:apache-el org.glassfish:javax.el
+
+# Remove when alias is added to ecj
+%pom_change_dep -r 'org.eclipse.jetty.orbit:org.eclipse.jdt.core' 'org.eclipse.jdt:core'
 
 # Disable OSGi
 %if %{without osgi}
@@ -607,8 +628,6 @@ find . -name "*.class" -exec rm {} \;
 %if %{without spring}
 %pom_disable_module jetty-spring
 %endif
-
-%pom_remove_dep :org.eclipse.jdt.core jetty-jsp
 
 cp %{SOURCE6} .
 
@@ -667,7 +686,7 @@ rm -f %{buildroot}%{homedir}/bin/*cygwin*
 
 # copy previously extracted configuration
 cp jetty-distribution/target/distribution/etc/* %{buildroot}%{homedir}/etc/
-cp jetty-distribution/target/distribution/modules/* %{buildroot}%{homedir}/modules/
+cp -r jetty-distribution/target/distribution/modules/* %{buildroot}%{homedir}/modules/
 
 install -pm 644 %{SOURCE3} %{buildroot}%{_sysconfdir}/logrotate.d/%{name}
 echo '# Placeholder configuration file.  No default is provided.' > \
@@ -789,7 +808,7 @@ exit 0
 
 %endif # with service
 
-%files -f .mfiles
+%files
 %if %{with service}
 %config(noreplace) %{_sysconfdir}/tmpfiles.d/%{name}.conf
 %config(noreplace) %attr(644, root, root) %{_sysconfdir}/logrotate.d/%{name}
@@ -829,6 +848,7 @@ exit 0
 %files monitor -f .mfiles-jetty-monitor
 %files plus -f .mfiles-jetty-plus
 %files proxy -f .mfiles-jetty-proxy
+%files quickstart -f .mfiles-jetty-quickstart
 %files rewrite -f .mfiles-jetty-rewrite
 %files security -f .mfiles-jetty-security
 %files server -f .mfiles-jetty-server
@@ -860,7 +880,6 @@ exit 0
 %files osgi-boot -f .mfiles-jetty-osgi-boot
 %files osgi-boot-warurl -f .mfiles-jetty-osgi-boot-warurl
 %files osgi-boot-jsp -f .mfiles-jetty-osgi-boot-jsp
-%files osgi-npn -f .mfiles-jetty-osgi-npn
 %endif
 
 %if %{with spring}
@@ -871,6 +890,24 @@ exit 0
 %doc NOTICE.txt LICENSE*
 
 %changelog
+* Fri Oct 10 2014 Michael Simacek <msimacek@redhat.com> - 9.2.3-2
+- Add missing requires jetty-start
+
+* Wed Sep 10 2014 Michael Simacek <msimacek@redhat.com> - 9.2.3-1
+- Update to upstream version 9.2.3
+
+* Tue Jul 29 2014 Michael Simacek <msimacek@redhat.com> - 9.2.2-1
+- Update to upstream version 9.2.2
+
+* Fri Jun 13 2014 Michael Simacek <msimacek@redhat.com> - 9.2.1-1
+- Update to upstream version 9.2.1
+
+* Sun Jun 08 2014 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 9.2.0-2
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_21_Mass_Rebuild
+
+* Wed May 28 2014 Michael Simacek <msimacek@redhat.com> - 9.2.0-1
+- Update to upstream version 9.2.0
+
 * Tue May 06 2014 Michael Simacek <msimacek@redhat.com> - 9.1.5-1
 - Update to upstream version 9.1.5
 
