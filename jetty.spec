@@ -796,16 +796,6 @@ exit 0
 %systemd_postun_with_restart jetty.service
 
 
-%triggerun -- jetty < 8.1.0-3
-# Save the current service runlevel info
-# User must manually run systemd-sysv-convert --apply httpd
-# to migrate them to systemd targets
-/usr/bin/systemd-sysv-convert --save jetty >/dev/null 2>&1 ||:
-
-# Run these because the SysV package being removed won't do them
-/sbin/chkconfig --del jetty >/dev/null 2>&1 || :
-/bin/systemctl try-restart jetty.service >/dev/null 2>&1 || :
-
 %endif # with service
 
 %files
