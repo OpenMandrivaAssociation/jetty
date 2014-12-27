@@ -157,7 +157,7 @@ Requires:       jetty-websocket-servlet    = %{version}-%{release}
 Requires:       glassfish-servlet-api
 
 Requires(pre):    shadow-utils
-Requires(post):   systemd-units, systemd-sysv
+Requires(post):   systemd-units
 Requires(preun):  systemd-units
 Requires(postun): systemd-units
 
