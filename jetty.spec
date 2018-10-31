@@ -54,7 +54,7 @@
 
 Name:           jetty
 Version:        9.2.3
-Release:        2.2
+Release:        2.3
 Summary:        Java Webserver and Servlet Container
 Group:		System/Servers
 # Jetty is dual licensed under both ASL 2.0 and EPL 1.0, see NOTICE.txt
