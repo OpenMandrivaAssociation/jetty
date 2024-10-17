@@ -59,7 +59,7 @@ Summary:        Java Webserver and Servlet Container
 Group:		System/Servers
 # Jetty is dual licensed under both ASL 2.0 and EPL 1.0, see NOTICE.txt
 License:        ASL 2.0 or EPL
-URL:            http://www.eclipse.org/jetty/
+URL:            https://www.eclipse.org/jetty/
 Source0:        http://git.eclipse.org/c/jetty/org.eclipse.jetty.project.git/snapshot/jetty-%{version}.%{addver}.tar.gz
 Source1:        jetty.sh
 Source3:        jetty.logrotate
